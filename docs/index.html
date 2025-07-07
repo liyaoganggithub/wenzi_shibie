@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>通用OCR文字识别工具 - 静态版</title>
+    <title>通用OCR文字识别工具</title>
     <style>
         body {
             font-family: 'Segoe UI', 'Microsoft YaHei', Arial, sans-serif;
@@ -89,20 +89,6 @@
             color: #409eff;
             margin-top: 2px;
         }
-        .progress-bar {
-            width: 100%;
-            height: 4px;
-            background: #e4e7ed;
-            border-radius: 2px;
-            margin-top: 16px;
-            overflow: hidden;
-        }
-        .progress-fill {
-            height: 100%;
-            background: linear-gradient(90deg, #409eff 60%, #66b1ff 100%);
-            width: 0%;
-            transition: width 0.3s ease;
-        }
         .footer {
             text-align: center;
             color: #b0b8c1;
@@ -134,25 +120,19 @@
         <form id="uploadForm" style="display: flex; flex-direction: column; gap: 18px;">
             <div style="display: flex; justify-content: center;">
                 <label class="upload-area" id="uploadArea" for="fileInput" style="width: 100%; max-width: 320px;">
-                    <span id="fileLabel">点击或拖拽上传图片</span>
-                    <input type="file" id="fileInput" accept=".png,.jpg,.jpeg,.bmp,.tiff" />
+                    <span id="fileLabel">点击或拖拽上传图片/PDF</span>
+                    <input type="file" id="fileInput" accept=".png,.jpg,.jpeg,.bmp,.tiff,.pdf" />
                 </label>
             </div>
             <img id="previewImg" style="display:none;max-width:100%;margin:16px auto 0 auto;border-radius:8px;box-shadow:0 2px 8px rgba(64,158,255,0.08);" />
             <button type="submit" class="btn" id="submitBtn" disabled style="margin-top: 0;">开始识别</button>
         </form>
-        <div class="progress-bar" id="progressBar" style="display: none;">
-            <div class="progress-fill" id="progressFill"></div>
-        </div>
         <div class="result" id="resultBox" style="margin-top: 24px;">
             <span class="result-icon" id="resultIcon">🔍</span>
             <span id="resultText">识别结果将在此显示</span>
         </div>
     </div>
-    <div class="footer">© 2024 通用OCR文字识别工具 | GitHub Pages版 | Powered by Tesseract.js</div>
-
-    <!-- 引入 Tesseract.js -->
-    <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
+    <div class="footer">© 2024 通用OCR文字识别工具 | 支持图片/PDF | Powered by PaddleOCR</div>
     <script>
         const fileInput = document.getElementById('fileInput');
         const uploadArea = document.getElementById('uploadArea');
@@ -162,8 +142,6 @@
         const resultText = document.getElementById('resultText');
         const resultIcon = document.getElementById('resultIcon');
         const previewImg = document.getElementById('previewImg');
-        const progressBar = document.getElementById('progressBar');
-        const progressFill = document.getElementById('progressFill');
         let selectedFile = null;
 
         // 拖拽上传样式
@@ -183,14 +161,16 @@
                 handleFileChange();
             }
         });
+        // 不再需要 uploadArea 的 click 事件
         fileInput.addEventListener('change', handleFileChange);
 
         function handleFileChange() {
+            const previewImg = document.getElementById('previewImg');
             if (fileInput.files.length > 0) {
                 selectedFile = fileInput.files[0];
                 fileLabel.textContent = selectedFile.name;
                 submitBtn.disabled = false;
-                // 预览图片
+                // 只预览图片类型
                 if (selectedFile.type.startsWith('image/')) {
                     const reader = new FileReader();
                     reader.onload = function(e) {
@@ -204,7 +184,7 @@
                 }
             } else {
                 selectedFile = null;
-                fileLabel.textContent = '点击或拖拽上传图片';
+                fileLabel.textContent = '点击或拖拽上传图片/PDF';
                 submitBtn.disabled = true;
                 previewImg.style.display = 'none';
                 previewImg.src = '';
@@ -214,56 +194,23 @@
         document.getElementById('uploadForm').addEventListener('submit', async function(e) {
             e.preventDefault();
             if (!selectedFile) return;
-            
             resultIcon.textContent = '⏳';
-            resultText.textContent = '正在初始化识别引擎...';
+            resultText.textContent = '正在识别，请稍候...';
             submitBtn.disabled = true;
-            progressBar.style.display = 'block';
-            progressFill.style.width = '0%';
-            
             try {
-                // 使用Tesseract.js进行OCR识别
-                const result = await Tesseract.recognize(
-                    selectedFile,
-                    'chi_sim+chi_tra+eng', // 支持简体中文、繁体中文和英文
-                    {
-                        logger: function(m) {
-                            console.log(m);
-                            // 更新进度条
-                            if (m.status === 'recognizing text') {
-                                const progress = Math.round(m.progress * 100);
-                                progressFill.style.width = progress + '%';
-                                resultText.textContent = `正在识别文字... ${progress}%`;
-                            } else if (m.status === 'loading tesseract core') {
-                                resultText.textContent = '正在加载识别核心...';
-                                progressFill.style.width = '20%';
-                            } else if (m.status === 'initializing tesseract') {
-                                resultText.textContent = '正在初始化识别引擎...';
-                                progressFill.style.width = '40%';
-                            } else if (m.status === 'initializing api') {
-                                resultText.textContent = '正在初始化API...';
-                                progressFill.style.width = '60%';
-                            } else if (m.status === 'loading language traineddata') {
-                                resultText.textContent = '正在加载语言数据...';
-                                progressFill.style.width = '80%';
-                            }
-                        }
-                    }
-                );
-                
-                progressFill.style.width = '100%';
-                progressBar.style.display = 'none';
-                
-                if (result.data.text.trim()) {
-                    resultIcon.textContent = '✅';
-                    resultText.textContent = result.data.text;
-                } else {
-                    resultIcon.textContent = '⚠️';
-                    resultText.textContent = '未识别到文字内容，请尝试使用更清晰的图片';
-                }
+                // 这里假设有后端API /api/ocr，支持文件上传
+                const formData = new FormData();
+                formData.append('file', selectedFile);
+                const url = 'http://shibie.xuanpian.baitaisuiyue.vip/api/ocr/api/ocr';
+                const resp = await fetch(url, {
+                    method: 'POST',
+                    body: formData
+                });
+                if (!resp.ok) throw new Error('识别失败，服务器错误');
+                const data = await resp.json();
+                resultIcon.textContent = '✅';
+                resultText.textContent = data.text || '未识别到文字';
             } catch (err) {
-                console.error('OCR识别失败:', err);
-                progressBar.style.display = 'none';
                 resultIcon.textContent = '❌';
                 resultText.textContent = '识别失败：' + err.message;
             } finally {
