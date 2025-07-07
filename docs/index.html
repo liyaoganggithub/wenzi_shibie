@@ -201,7 +201,7 @@
                 // 这里假设有后端API /api/ocr，支持文件上传
                 const formData = new FormData();
                 formData.append('file', selectedFile);
-                const url = 'http://shibie.xuanpian.baitaisuiyue.vip/api/ocr/api/ocr';
+                const url = 'http://shibie.xuanpian.baitaisuiyue.vip/api/ocr';
                 const resp = await fetch(url, {
                     method: 'POST',
                     body: formData
